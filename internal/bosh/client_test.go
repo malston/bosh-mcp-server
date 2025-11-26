@@ -86,3 +86,145 @@ func TestClient_ListTasks(t *testing.T) {
 		t.Errorf("expected 2 tasks, got %d", len(result))
 	}
 }
+
+func TestClient_ListStemcells(t *testing.T) {
+	stemcells := []Stemcell{
+		{Name: "bosh-vsphere-esxi-ubuntu-jammy-go_agent", Version: "1.200", OperatingSystem: "ubuntu-jammy"},
+	}
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/stemcells" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stemcells)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	result, err := client.ListStemcells()
+	if err != nil {
+		t.Fatalf("ListStemcells failed: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Errorf("expected 1 stemcell, got %d", len(result))
+	}
+	if result[0].Name != "bosh-vsphere-esxi-ubuntu-jammy-go_agent" {
+		t.Errorf("expected stemcell name, got %s", result[0].Name)
+	}
+}
+
+func TestClient_ListReleases(t *testing.T) {
+	releases := []Release{
+		{Name: "cf", Version: "1.0.0", CommitHash: "abc123"},
+	}
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/releases" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(releases)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	result, err := client.ListReleases()
+	if err != nil {
+		t.Fatalf("ListReleases failed: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Errorf("expected 1 release, got %d", len(result))
+	}
+}
+
+func TestClient_GetCloudConfig(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/configs" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("type") != "cloud" {
+			t.Errorf("expected type=cloud query param")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]CloudConfig{{Properties: "azs: []", CreatedAt: "2024-01-01"}})
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	result, err := client.GetCloudConfig()
+	if err != nil {
+		t.Fatalf("GetCloudConfig failed: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("expected cloud config, got nil")
+	}
+}
+
+func TestClient_ListLocks(t *testing.T) {
+	locks := []Lock{
+		{Type: "deployment", Resource: "cf", TaskID: "123"},
+	}
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/locks" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(locks)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	result, err := client.ListLocks()
+	if err != nil {
+		t.Fatalf("ListLocks failed: %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Errorf("expected 1 lock, got %d", len(result))
+	}
+}

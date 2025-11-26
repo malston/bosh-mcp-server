@@ -34,6 +34,7 @@ func (r *Registry) GetClient(environment string) (*bosh.Client, error) {
 // RegisterTools registers all tools with the MCP server.
 func (r *Registry) RegisterTools(s *server.MCPServer) {
 	r.registerDiagnosticTools(s)
+	r.registerInfrastructureTools(s)
 }
 
 func (r *Registry) registerDiagnosticTools(s *server.MCPServer) {
@@ -81,4 +82,65 @@ func (r *Registry) registerDiagnosticTools(s *server.MCPServer) {
 		mcp.WithString("environment",
 			mcp.Description("Named BOSH environment (optional)")),
 	), r.handleBoshTask)
+}
+
+func (r *Registry) registerInfrastructureTools(s *server.MCPServer) {
+	// bosh_stemcells
+	s.AddTool(mcp.NewTool("bosh_stemcells",
+		mcp.WithDescription("List uploaded stemcells"),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshStemcells)
+
+	// bosh_releases
+	s.AddTool(mcp.NewTool("bosh_releases",
+		mcp.WithDescription("List uploaded releases"),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshReleases)
+
+	// bosh_deployments
+	s.AddTool(mcp.NewTool("bosh_deployments",
+		mcp.WithDescription("List all deployments"),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshDeployments)
+
+	// bosh_cloud_config
+	s.AddTool(mcp.NewTool("bosh_cloud_config",
+		mcp.WithDescription("Get current cloud config"),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshCloudConfig)
+
+	// bosh_runtime_config
+	s.AddTool(mcp.NewTool("bosh_runtime_config",
+		mcp.WithDescription("Get runtime configs"),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshRuntimeConfig)
+
+	// bosh_cpi_config
+	s.AddTool(mcp.NewTool("bosh_cpi_config",
+		mcp.WithDescription("Get CPI config"),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshCPIConfig)
+
+	// bosh_variables
+	s.AddTool(mcp.NewTool("bosh_variables",
+		mcp.WithDescription("List variables for a deployment"),
+		mcp.WithString("deployment",
+			mcp.Required(),
+			mcp.Description("Name of the deployment")),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshVariables)
+
+	// bosh_locks
+	s.AddTool(mcp.NewTool("bosh_locks",
+		mcp.WithDescription("Show current deployment locks"),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshLocks)
 }
