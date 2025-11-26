@@ -13,7 +13,15 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// version is set at build time via -ldflags
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
+		fmt.Printf("bosh-mcp-server %s\n", version)
+		os.Exit(0)
+	}
+
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -37,7 +45,7 @@ func run() error {
 	// Create MCP server
 	s := server.NewMCPServer(
 		"bosh-mcp-server",
-		"0.2.0",
+		version,
 		server.WithToolCapabilities(true),
 	)
 

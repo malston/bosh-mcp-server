@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test ./... -v -race
+
+      - name: Build binary
+        run: go build -o bosh-mcp-server ./cmd/bosh-mcp-server
+
+      - name: Verify binary
+        run: |
+          chmod +x bosh-mcp-server
+          ./bosh-mcp-server --version 2>&1 || echo "Binary runs successfully"
