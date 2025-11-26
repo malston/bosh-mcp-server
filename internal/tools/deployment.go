@@ -57,6 +57,7 @@ func (r *DeploymentRegistry) handleBoshDeleteDeployment(ctx context.Context, req
 				"operation":             "delete_deployment",
 				"deployment":            deployment,
 				"expires_in_seconds":    r.config.TokenTTL,
+				"message":               fmt.Sprintf("STOP: Ask the user to confirm they want to delete deployment '%s'. This action is irreversible. Only proceed with the confirm token if the user explicitly approves.", deployment),
 			}
 			jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 			return mcp.NewToolResultText(string(jsonBytes)), nil
@@ -122,6 +123,10 @@ func (r *DeploymentRegistry) handleBoshRecreate(ctx context.Context, request mcp
 	if r.config.RequiresConfirmation("recreate") {
 		if confirmToken == "" {
 			token := r.tokenStore.Generate("recreate", resource)
+			target := deployment
+			if job != "" {
+				target = deployment + "/" + job
+			}
 			result := map[string]interface{}{
 				"requires_confirmation": true,
 				"confirmation_token":    token,
@@ -129,6 +134,7 @@ func (r *DeploymentRegistry) handleBoshRecreate(ctx context.Context, request mcp
 				"deployment":            deployment,
 				"job":                   job,
 				"expires_in_seconds":    r.config.TokenTTL,
+				"message":               fmt.Sprintf("STOP: Ask the user to confirm they want to recreate VMs for '%s'. This will cause downtime. Only proceed with the confirm token if the user explicitly approves.", target),
 			}
 			jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 			return mcp.NewToolResultText(string(jsonBytes)), nil
@@ -192,6 +198,10 @@ func (r *DeploymentRegistry) handleBoshStop(ctx context.Context, request mcp.Cal
 	if r.config.RequiresConfirmation("stop") {
 		if confirmToken == "" {
 			token := r.tokenStore.Generate("stop", resource)
+			target := deployment
+			if job != "" {
+				target = deployment + "/" + job
+			}
 			result := map[string]interface{}{
 				"requires_confirmation": true,
 				"confirmation_token":    token,
@@ -199,6 +209,7 @@ func (r *DeploymentRegistry) handleBoshStop(ctx context.Context, request mcp.Cal
 				"deployment":            deployment,
 				"job":                   job,
 				"expires_in_seconds":    r.config.TokenTTL,
+				"message":               fmt.Sprintf("STOP: Ask the user to confirm they want to stop '%s'. This will cause downtime. Only proceed with the confirm token if the user explicitly approves.", target),
 			}
 			jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 			return mcp.NewToolResultText(string(jsonBytes)), nil
