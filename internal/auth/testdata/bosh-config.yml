@@ -1,0 +1,14 @@
+environments:
+  10.0.0.5:
+    url: https://10.0.0.5:25555
+    client: admin
+    client_secret: config-secret
+    ca_cert: |
+      -----BEGIN CERTIFICATE-----
+      test-ca-cert
+      -----END CERTIFICATE-----
+  sandbox:
+    url: https://sandbox.example.com:25555
+    client: sandbox-admin
+    client_secret: sandbox-secret
+    ca_cert: /path/to/sandbox-ca.crt
