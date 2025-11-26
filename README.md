@@ -163,6 +163,43 @@ go build ./cmd/bosh-mcp-server
 go test ./... -v
 ```
 
+### Manual Testing with Claude Code
+
+A [mock BOSH Director](https://github.com/malston/bosh-mock-director) is available for manually testing the MCP server with Claude Code without needing a real BOSH environment.
+
+**Setup:**
+
+```bash
+# Clone and build the mock director
+git clone https://github.com/malston/bosh-mock-director.git
+cd bosh-mock-director
+go build -o mock-bosh-director ./cmd/mock-bosh-director
+
+# Start the mock director (Terminal 1)
+./mock-bosh-director
+
+# Build the MCP server
+cd /path/to/bosh-mcp-server
+go build -o bosh-mcp-server ./cmd/bosh-mcp-server
+
+# Start Claude Code from the mock-director directory (Terminal 2)
+# This picks up the pre-configured .claude/mcp.json
+cd /path/to/bosh-mock-director
+claude
+```
+
+The mock director includes realistic sample data:
+- 3 deployments (`cf`, `redis`, `mysql`) with VMs and instances
+- Stemcells, releases, and configs
+- Task simulation with state progression
+- State mutations for destructive operations
+
+**Example prompts to try:**
+- "What deployments are running on BOSH?"
+- "Show me the VMs in the cf deployment"
+- "List the recent BOSH tasks"
+- "Stop the router job in cf" (triggers confirmation)
+
 ### Project Structure
 
 ```
