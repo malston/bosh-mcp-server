@@ -78,11 +78,27 @@ func (r *DeploymentRegistry) handleBoshDeleteDeployment(ctx context.Context, req
 		return mcp.NewToolResultError(fmt.Sprintf("failed to delete deployment: %v", err)), nil
 	}
 
+	// Wait for task completion
+	timeout := time.Duration(request.GetInt("timeout", 600)) * time.Second
+	task, err := client.WaitForTask(taskID, timeout, 2*time.Second)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("task failed: %v", err)), nil
+	}
+
 	result := map[string]interface{}{
-		"task_id":    taskID,
-		"state":      "queued",
+		"task_id":    task.ID,
+		"state":      task.State,
 		"deployment": deployment,
 	}
+
+	// Include output for completed tasks
+	if task.State == "done" || task.State == "error" {
+		output, err := client.GetTaskOutput(task.ID, "result")
+		if err == nil && output != "" {
+			result["output"] = output
+		}
+	}
+
 	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
@@ -133,11 +149,27 @@ func (r *DeploymentRegistry) handleBoshRecreate(ctx context.Context, request mcp
 		return mcp.NewToolResultError(fmt.Sprintf("failed to recreate: %v", err)), nil
 	}
 
+	// Wait for task completion
+	timeout := time.Duration(request.GetInt("timeout", 600)) * time.Second
+	task, err := client.WaitForTask(taskID, timeout, 2*time.Second)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("task failed: %v", err)), nil
+	}
+
 	result := map[string]interface{}{
-		"task_id":    taskID,
-		"state":      "queued",
+		"task_id":    task.ID,
+		"state":      task.State,
 		"deployment": deployment,
 	}
+
+	// Include output for completed tasks
+	if task.State == "done" || task.State == "error" {
+		output, err := client.GetTaskOutput(task.ID, "result")
+		if err == nil && output != "" {
+			result["output"] = output
+		}
+	}
+
 	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
@@ -187,11 +219,27 @@ func (r *DeploymentRegistry) handleBoshStop(ctx context.Context, request mcp.Cal
 		return mcp.NewToolResultError(fmt.Sprintf("failed to stop: %v", err)), nil
 	}
 
+	// Wait for task completion
+	timeout := time.Duration(request.GetInt("timeout", 600)) * time.Second
+	task, err := client.WaitForTask(taskID, timeout, 2*time.Second)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("task failed: %v", err)), nil
+	}
+
 	result := map[string]interface{}{
-		"task_id":    taskID,
-		"state":      "queued",
+		"task_id":    task.ID,
+		"state":      task.State,
 		"deployment": deployment,
 	}
+
+	// Include output for completed tasks
+	if task.State == "done" || task.State == "error" {
+		output, err := client.GetTaskOutput(task.ID, "result")
+		if err == nil && output != "" {
+			result["output"] = output
+		}
+	}
+
 	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
@@ -217,11 +265,27 @@ func (r *DeploymentRegistry) handleBoshStart(ctx context.Context, request mcp.Ca
 		return mcp.NewToolResultError(fmt.Sprintf("failed to start: %v", err)), nil
 	}
 
+	// Wait for task completion
+	timeout := time.Duration(request.GetInt("timeout", 600)) * time.Second
+	task, err := client.WaitForTask(taskID, timeout, 2*time.Second)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("task failed: %v", err)), nil
+	}
+
 	result := map[string]interface{}{
-		"task_id":    taskID,
-		"state":      "queued",
+		"task_id":    task.ID,
+		"state":      task.State,
 		"deployment": deployment,
 	}
+
+	// Include output for completed tasks
+	if task.State == "done" || task.State == "error" {
+		output, err := client.GetTaskOutput(task.ID, "result")
+		if err == nil && output != "" {
+			result["output"] = output
+		}
+	}
+
 	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
@@ -247,11 +311,27 @@ func (r *DeploymentRegistry) handleBoshRestart(ctx context.Context, request mcp.
 		return mcp.NewToolResultError(fmt.Sprintf("failed to restart: %v", err)), nil
 	}
 
+	// Wait for task completion
+	timeout := time.Duration(request.GetInt("timeout", 600)) * time.Second
+	task, err := client.WaitForTask(taskID, timeout, 2*time.Second)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("task failed: %v", err)), nil
+	}
+
 	result := map[string]interface{}{
-		"task_id":    taskID,
-		"state":      "queued",
+		"task_id":    task.ID,
+		"state":      task.State,
 		"deployment": deployment,
 	}
+
+	// Include output for completed tasks
+	if task.State == "done" || task.State == "error" {
+		output, err := client.GetTaskOutput(task.ID, "result")
+		if err == nil && output != "" {
+			result["output"] = output
+		}
+	}
+
 	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(jsonBytes)), nil
 }
@@ -270,6 +350,8 @@ func (r *DeploymentRegistry) RegisterDeploymentTools(s *server.MCPServer) {
 			mcp.Description("Force delete even if instances are running")),
 		mcp.WithString("environment",
 			mcp.Description("Named BOSH environment (optional)")),
+		mcp.WithNumber("timeout",
+			mcp.Description("Timeout in seconds to wait for completion (default: 600)")),
 	), r.handleBoshDeleteDeployment)
 
 	// bosh_recreate
@@ -286,6 +368,8 @@ func (r *DeploymentRegistry) RegisterDeploymentTools(s *server.MCPServer) {
 			mcp.Description("Confirmation token (required for destructive operation)")),
 		mcp.WithString("environment",
 			mcp.Description("Named BOSH environment (optional)")),
+		mcp.WithNumber("timeout",
+			mcp.Description("Timeout in seconds to wait for completion (default: 600)")),
 	), r.handleBoshRecreate)
 
 	// bosh_stop
@@ -300,6 +384,8 @@ func (r *DeploymentRegistry) RegisterDeploymentTools(s *server.MCPServer) {
 			mcp.Description("Confirmation token (required for destructive operation)")),
 		mcp.WithString("environment",
 			mcp.Description("Named BOSH environment (optional)")),
+		mcp.WithNumber("timeout",
+			mcp.Description("Timeout in seconds to wait for completion (default: 600)")),
 	), r.handleBoshStop)
 
 	// bosh_start
@@ -312,6 +398,8 @@ func (r *DeploymentRegistry) RegisterDeploymentTools(s *server.MCPServer) {
 			mcp.Description("Job name to start (optional, all if not specified)")),
 		mcp.WithString("environment",
 			mcp.Description("Named BOSH environment (optional)")),
+		mcp.WithNumber("timeout",
+			mcp.Description("Timeout in seconds to wait for completion (default: 600)")),
 	), r.handleBoshStart)
 
 	// bosh_restart
@@ -324,5 +412,7 @@ func (r *DeploymentRegistry) RegisterDeploymentTools(s *server.MCPServer) {
 			mcp.Description("Job name to restart (optional, all if not specified)")),
 		mcp.WithString("environment",
 			mcp.Description("Named BOSH environment (optional)")),
+		mcp.WithNumber("timeout",
+			mcp.Description("Timeout in seconds to wait for completion (default: 600)")),
 	), r.handleBoshRestart)
 }

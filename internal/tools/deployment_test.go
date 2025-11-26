@@ -47,8 +47,18 @@ func TestHandleBoshDeleteDeployment_RequiresConfirmation(t *testing.T) {
 
 func TestHandleBoshDeleteDeployment_WithValidToken(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Location", "/tasks/123")
-		w.WriteHeader(http.StatusFound)
+		if r.Method == "DELETE" {
+			w.Header().Set("Location", "/tasks/123")
+			w.WriteHeader(http.StatusFound)
+		} else if r.Method == "GET" && strings.Contains(r.URL.Path, "/tasks/") {
+			// Handle task status polling
+			task := map[string]interface{}{
+				"id":    123,
+				"state": "done",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(task)
+		}
 	}))
 	defer server.Close()
 
@@ -117,8 +127,18 @@ func TestHandleBoshDeleteDeployment_InvalidToken(t *testing.T) {
 
 func TestHandleBoshStart_NoConfirmationRequired(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Location", "/tasks/456")
-		w.WriteHeader(http.StatusFound)
+		if r.Method == "PUT" {
+			w.Header().Set("Location", "/tasks/456")
+			w.WriteHeader(http.StatusFound)
+		} else if r.Method == "GET" && strings.Contains(r.URL.Path, "/tasks/") {
+			// Handle task status polling
+			task := map[string]interface{}{
+				"id":    456,
+				"state": "done",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(task)
+		}
 	}))
 	defer server.Close()
 
@@ -153,8 +173,18 @@ func TestHandleBoshStart_NoConfirmationRequired(t *testing.T) {
 
 func TestHandleBoshRestart_Success(t *testing.T) {
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Location", "/tasks/789")
-		w.WriteHeader(http.StatusFound)
+		if r.Method == "PUT" {
+			w.Header().Set("Location", "/tasks/789")
+			w.WriteHeader(http.StatusFound)
+		} else if r.Method == "GET" && strings.Contains(r.URL.Path, "/tasks/") {
+			// Handle task status polling
+			task := map[string]interface{}{
+				"id":    789,
+				"state": "done",
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(task)
+		}
 	}))
 	defer server.Close()
 
