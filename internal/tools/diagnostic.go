@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/malston/bosh-mcp-server/internal/bosh"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -130,6 +131,48 @@ func (r *Registry) handleBoshTask(ctx context.Context, request mcp.CallToolReque
 	}
 
 	if includeOutput {
+		output, err := client.GetTaskOutput(id, "result")
+		if err == nil {
+			result["output"] = output
+		}
+	}
+
+	jsonBytes, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed to marshal result: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(jsonBytes)), nil
+}
+
+func (r *Registry) handleBoshTaskWait(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	environment := request.GetString("environment", "")
+
+	idFloat := request.GetInt("id", 0)
+	if idFloat == 0 {
+		return mcp.NewToolResultError("id is required"), nil
+	}
+	id := int(idFloat)
+
+	timeoutSecs := request.GetInt("timeout", 600) // default 10 minutes
+	timeout := time.Duration(timeoutSecs) * time.Second
+
+	client, err := r.GetClient(environment)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("auth failed: %v", err)), nil
+	}
+
+	task, err := client.WaitForTask(id, timeout, 2*time.Second)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("failed waiting for task: %v", err)), nil
+	}
+
+	result := map[string]interface{}{
+		"task": task,
+	}
+
+	// Include output for completed tasks
+	if task.State == "done" || task.State == "error" {
 		output, err := client.GetTaskOutput(id, "result")
 		if err == nil {
 			result["output"] = output

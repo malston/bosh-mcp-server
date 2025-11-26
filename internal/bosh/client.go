@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/malston/bosh-mcp-server/internal/auth"
 )
@@ -401,4 +402,38 @@ func (c *Client) doAsyncRequest(method, path string, query url.Values) (int, err
 	}
 
 	return taskID, nil
+}
+
+// WaitForTask polls a task until it reaches a terminal state or timeout.
+// Terminal states: done, error, cancelled
+// Returns the final task state.
+func (c *Client) WaitForTask(taskID int, timeout time.Duration, pollInterval time.Duration) (*Task, error) {
+	if pollInterval == 0 {
+		pollInterval = 2 * time.Second
+	}
+	if timeout == 0 {
+		timeout = 10 * time.Minute
+	}
+
+	deadline := time.Now().Add(timeout)
+
+	for {
+		task, err := c.GetTask(taskID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task %d: %w", taskID, err)
+		}
+
+		// Check for terminal states
+		switch task.State {
+		case "done", "error", "cancelled":
+			return task, nil
+		}
+
+		// Check timeout
+		if time.Now().After(deadline) {
+			return task, fmt.Errorf("timeout waiting for task %d (current state: %s)", taskID, task.State)
+		}
+
+		time.Sleep(pollInterval)
+	}
 }

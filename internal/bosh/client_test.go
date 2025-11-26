@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/malston/bosh-mcp-server/internal/auth"
 )
@@ -322,5 +323,43 @@ func TestClient_Recreate(t *testing.T) {
 
 	if taskID != 789 {
 		t.Errorf("expected task ID 789, got %d", taskID)
+	}
+}
+
+func TestClient_WaitForTask(t *testing.T) {
+	callCount := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		task := Task{ID: 123, State: "processing", Description: "test task"}
+		if callCount >= 3 {
+			task.State = "done"
+			task.Result = "success"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(task)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	task, err := client.WaitForTask(123, 10*time.Second, 10*time.Millisecond)
+	if err != nil {
+		t.Fatalf("WaitForTask failed: %v", err)
+	}
+
+	if task.State != "done" {
+		t.Errorf("expected state done, got %s", task.State)
+	}
+	if callCount < 3 {
+		t.Errorf("expected at least 3 poll calls, got %d", callCount)
 	}
 }
