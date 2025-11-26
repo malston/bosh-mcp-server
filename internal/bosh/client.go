@@ -205,3 +205,119 @@ func (c *Client) ListDeployments() ([]Deployment, error) {
 
 	return deployments, nil
 }
+
+// ListStemcells returns all uploaded stemcells.
+func (c *Client) ListStemcells() ([]Stemcell, error) {
+	body, err := c.doRequest("GET", "/stemcells", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var stemcells []Stemcell
+	if err := json.Unmarshal(body, &stemcells); err != nil {
+		return nil, err
+	}
+
+	return stemcells, nil
+}
+
+// ListReleases returns all uploaded releases.
+func (c *Client) ListReleases() ([]Release, error) {
+	body, err := c.doRequest("GET", "/releases", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var releases []Release
+	if err := json.Unmarshal(body, &releases); err != nil {
+		return nil, err
+	}
+
+	return releases, nil
+}
+
+// GetCloudConfig returns the current cloud config.
+func (c *Client) GetCloudConfig() (*CloudConfig, error) {
+	query := url.Values{"type": {"cloud"}, "latest": {"true"}}
+	body, err := c.doRequest("GET", "/configs", query)
+	if err != nil {
+		return nil, err
+	}
+
+	var configs []CloudConfig
+	if err := json.Unmarshal(body, &configs); err != nil {
+		return nil, err
+	}
+
+	if len(configs) == 0 {
+		return nil, nil
+	}
+
+	return &configs[0], nil
+}
+
+// GetRuntimeConfigs returns all runtime configs.
+func (c *Client) GetRuntimeConfigs() ([]RuntimeConfig, error) {
+	query := url.Values{"type": {"runtime"}, "latest": {"true"}}
+	body, err := c.doRequest("GET", "/configs", query)
+	if err != nil {
+		return nil, err
+	}
+
+	var configs []RuntimeConfig
+	if err := json.Unmarshal(body, &configs); err != nil {
+		return nil, err
+	}
+
+	return configs, nil
+}
+
+// GetCPIConfig returns the current CPI config.
+func (c *Client) GetCPIConfig() (*CPIConfig, error) {
+	query := url.Values{"type": {"cpi"}, "latest": {"true"}}
+	body, err := c.doRequest("GET", "/configs", query)
+	if err != nil {
+		return nil, err
+	}
+
+	var configs []CPIConfig
+	if err := json.Unmarshal(body, &configs); err != nil {
+		return nil, err
+	}
+
+	if len(configs) == 0 {
+		return nil, nil
+	}
+
+	return &configs[0], nil
+}
+
+// ListVariables returns variables for a deployment.
+func (c *Client) ListVariables(deployment string) ([]Variable, error) {
+	body, err := c.doRequest("GET", "/deployments/"+deployment+"/variables", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var variables []Variable
+	if err := json.Unmarshal(body, &variables); err != nil {
+		return nil, err
+	}
+
+	return variables, nil
+}
+
+// ListLocks returns current deployment locks.
+func (c *Client) ListLocks() ([]Lock, error) {
+	body, err := c.doRequest("GET", "/locks", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var locks []Lock
+	if err := json.Unmarshal(body, &locks); err != nil {
+		return nil, err
+	}
+
+	return locks, nil
+}
