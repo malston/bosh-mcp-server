@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/malston/bosh-mcp-server/internal/auth"
 )
@@ -226,5 +227,139 @@ func TestClient_ListLocks(t *testing.T) {
 
 	if len(result) != 1 {
 		t.Errorf("expected 1 lock, got %d", len(result))
+	}
+}
+
+func TestClient_DeleteDeployment(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != "/deployments/cf" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Location", "/tasks/123")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	taskID, err := client.DeleteDeployment("cf", false)
+	if err != nil {
+		t.Fatalf("DeleteDeployment failed: %v", err)
+	}
+
+	if taskID != 123 {
+		t.Errorf("expected task ID 123, got %d", taskID)
+	}
+}
+
+func TestClient_StopInstance(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		w.Header().Set("Location", "/tasks/456")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	taskID, err := client.ChangeJobState("cf", "diego_cell", "stopped")
+	if err != nil {
+		t.Fatalf("ChangeJobState failed: %v", err)
+	}
+
+	if taskID != 456 {
+		t.Errorf("expected task ID 456, got %d", taskID)
+	}
+}
+
+func TestClient_Recreate(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		w.Header().Set("Location", "/tasks/789")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	taskID, err := client.Recreate("cf", "", "")
+	if err != nil {
+		t.Fatalf("Recreate failed: %v", err)
+	}
+
+	if taskID != 789 {
+		t.Errorf("expected task ID 789, got %d", taskID)
+	}
+}
+
+func TestClient_WaitForTask(t *testing.T) {
+	callCount := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		task := Task{ID: 123, State: "processing", Description: "test task"}
+		if callCount >= 3 {
+			task.State = "done"
+			task.Result = "success"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(task)
+	}))
+	defer server.Close()
+
+	creds := &auth.Credentials{
+		Environment:  server.URL,
+		Client:       "admin",
+		ClientSecret: "secret",
+	}
+
+	client, err := NewClient(creds)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	task, err := client.WaitForTask(123, 10*time.Second, 10*time.Millisecond)
+	if err != nil {
+		t.Fatalf("WaitForTask failed: %v", err)
+	}
+
+	if task.State != "done" {
+		t.Errorf("expected state done, got %s", task.State)
+	}
+	if callCount < 3 {
+		t.Errorf("expected at least 3 poll calls, got %d", callCount)
 	}
 }

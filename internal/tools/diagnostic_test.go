@@ -524,3 +524,44 @@ func TestHandleBoshTask_AuthFailure(t *testing.T) {
 		t.Errorf("expected 'auth failed' error, got: %s", textContent.Text)
 	}
 }
+
+func TestHandleBoshTaskWait_Success(t *testing.T) {
+	callCount := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		task := bosh.Task{ID: 123, State: "processing"}
+		if callCount >= 2 {
+			task.State = "done"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(task)
+	}))
+	defer server.Close()
+
+	t.Setenv("BOSH_ENVIRONMENT", server.URL)
+	t.Setenv("BOSH_CLIENT", "admin")
+	t.Setenv("BOSH_CLIENT_SECRET", "secret")
+
+	authProvider := auth.NewProvider("")
+	registry := NewRegistry(authProvider)
+
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]interface{}{
+		"id":      float64(123),
+		"timeout": float64(10),
+	}
+
+	result, err := registry.handleBoshTaskWait(context.Background(), request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.IsError {
+		t.Fatalf("expected success, got error: %v", result.Content)
+	}
+
+	text := result.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(text, "done") {
+		t.Error("expected 'done' state in result")
+	}
+}

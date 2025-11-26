@@ -14,6 +14,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/malston/bosh-mcp-server/internal/auth"
 )
@@ -320,4 +321,119 @@ func (c *Client) ListLocks() ([]Lock, error) {
 	}
 
 	return locks, nil
+}
+
+// DeleteDeployment deletes a deployment. Returns task ID.
+func (c *Client) DeleteDeployment(deployment string, force bool) (int, error) {
+	query := url.Values{}
+	if force {
+		query.Set("force", "true")
+	}
+
+	path := "/deployments/" + deployment
+	return c.doAsyncRequest("DELETE", path, query)
+}
+
+// ChangeJobState changes the state of a job (start, stop, restart, detach).
+// Job can be empty to target all jobs, or "job_name" or "job_name/index".
+func (c *Client) ChangeJobState(deployment, job, state string) (int, error) {
+	path := "/deployments/" + deployment + "/jobs"
+	if job != "" {
+		path += "/" + job
+	}
+	query := url.Values{"state": {state}}
+	return c.doAsyncRequest("PUT", path, query)
+}
+
+// Recreate recreates VMs for a deployment.
+// Job and index can be empty to target all, or specific job/instance.
+func (c *Client) Recreate(deployment, job, index string) (int, error) {
+	path := "/deployments/" + deployment
+	if job != "" {
+		path += "/jobs/" + job
+		if index != "" {
+			path += "/" + index
+		}
+	}
+	query := url.Values{"state": {"recreate"}}
+	return c.doAsyncRequest("PUT", path, query)
+}
+
+// doAsyncRequest performs a request that returns a task ID in the Location header.
+func (c *Client) doAsyncRequest(method, path string, query url.Values) (int, error) {
+	u := c.baseURL + path
+	if len(query) > 0 {
+		u += "?" + query.Encode()
+	}
+
+	req, err := http.NewRequest(method, u, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	req.SetBasicAuth(c.creds.Client, c.creds.ClientSecret)
+	req.Header.Set("Content-Type", "application/json")
+
+	// Don't follow redirects - we need the Location header
+	c.httpClient.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusAccepted {
+		body, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	location := resp.Header.Get("Location")
+	if location == "" {
+		return 0, fmt.Errorf("no task location in response")
+	}
+
+	// Extract task ID from location like "/tasks/123"
+	var taskID int
+	if _, err := fmt.Sscanf(location, "/tasks/%d", &taskID); err != nil {
+		return 0, fmt.Errorf("failed to parse task ID from %s: %w", location, err)
+	}
+
+	return taskID, nil
+}
+
+// WaitForTask polls a task until it reaches a terminal state or timeout.
+// Terminal states: done, error, cancelled
+// Returns the final task state.
+func (c *Client) WaitForTask(taskID int, timeout time.Duration, pollInterval time.Duration) (*Task, error) {
+	if pollInterval == 0 {
+		pollInterval = 2 * time.Second
+	}
+	if timeout == 0 {
+		timeout = 10 * time.Minute
+	}
+
+	deadline := time.Now().Add(timeout)
+
+	for {
+		task, err := c.GetTask(taskID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task %d: %w", taskID, err)
+		}
+
+		// Check for terminal states
+		switch task.State {
+		case "done", "error", "cancelled":
+			return task, nil
+		}
+
+		// Check timeout
+		if time.Now().After(deadline) {
+			return task, fmt.Errorf("timeout waiting for task %d (current state: %s)", taskID, task.State)
+		}
+
+		time.Sleep(pollInterval)
+	}
 }

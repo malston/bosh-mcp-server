@@ -82,6 +82,18 @@ func (r *Registry) registerDiagnosticTools(s *server.MCPServer) {
 		mcp.WithString("environment",
 			mcp.Description("Named BOSH environment (optional)")),
 	), r.handleBoshTask)
+
+	// bosh_task_wait
+	s.AddTool(mcp.NewTool("bosh_task_wait",
+		mcp.WithDescription("Wait for a BOSH task to complete (polls until done/error/cancelled)"),
+		mcp.WithNumber("id",
+			mcp.Required(),
+			mcp.Description("Task ID to wait for")),
+		mcp.WithNumber("timeout",
+			mcp.Description("Timeout in seconds (default: 600)")),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshTaskWait)
 }
 
 func (r *Registry) registerInfrastructureTools(s *server.MCPServer) {
