@@ -109,3 +109,36 @@ type Release struct {
 	CommitHash         string `json:"commit_hash"`
 	UncommittedChanges bool   `json:"uncommitted_changes"`
 }
+
+// CloudConfig represents a cloud config.
+type CloudConfig struct {
+	Properties string `json:"properties"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// RuntimeConfig represents a runtime config.
+type RuntimeConfig struct {
+	Name       string `json:"name"`
+	Properties string `json:"properties"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// CPIConfig represents a CPI config.
+type CPIConfig struct {
+	Properties string `json:"properties"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// Variable represents a deployment variable.
+type Variable struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// Lock represents a deployment lock.
+type Lock struct {
+	Type     string `json:"type"`
+	Resource string `json:"resource"`
+	Timeout  string `json:"timeout"`
+	TaskID   string `json:"task_id"`
+}
