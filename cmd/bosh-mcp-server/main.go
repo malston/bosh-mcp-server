@@ -6,6 +6,10 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/malston/bosh-mcp-server/internal/auth"
+	"github.com/malston/bosh-mcp-server/internal/tools"
+	"github.com/mark3labs/mcp-go/server"
 )
 
 func main() {
@@ -16,6 +20,22 @@ func main() {
 }
 
 func run() error {
-	// TODO: Initialize MCP server
-	return nil
+	// Create auth provider
+	authProvider := auth.NewProvider("")
+
+	// Create tool registry
+	registry := tools.NewRegistry(authProvider)
+
+	// Create MCP server
+	s := server.NewMCPServer(
+		"bosh-mcp-server",
+		"0.1.0",
+		server.WithToolCapabilities(true),
+	)
+
+	// Register tools
+	registry.RegisterTools(s)
+
+	// Run server with stdio transport
+	return server.ServeStdio(s)
 }
