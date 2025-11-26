@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/malston/bosh-mcp-server/internal/auth"
+	"github.com/malston/bosh-mcp-server/internal/config"
 	"github.com/malston/bosh-mcp-server/internal/tools"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -20,21 +21,29 @@ func main() {
 }
 
 func run() error {
+	// Load configuration
+	configPath := os.Getenv("BOSH_MCP_CONFIG")
+	cfg := config.Load(configPath)
+
 	// Create auth provider
 	authProvider := auth.NewProvider("")
 
 	// Create tool registry
 	registry := tools.NewRegistry(authProvider)
 
+	// Create deployment registry with confirmation support
+	deploymentRegistry := tools.NewDeploymentRegistry(registry, cfg)
+
 	// Create MCP server
 	s := server.NewMCPServer(
 		"bosh-mcp-server",
-		"0.1.0",
+		"0.2.0",
 		server.WithToolCapabilities(true),
 	)
 
 	// Register tools
 	registry.RegisterTools(s)
+	deploymentRegistry.RegisterDeploymentTools(s)
 
 	// Run server with stdio transport
 	return server.ServeStdio(s)

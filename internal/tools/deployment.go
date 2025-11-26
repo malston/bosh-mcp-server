@@ -12,6 +12,7 @@ import (
 	"github.com/malston/bosh-mcp-server/internal/confirm"
 	"github.com/malston/bosh-mcp-server/internal/config"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 )
 
 // DeploymentRegistry extends Registry with confirmation support.
@@ -253,4 +254,75 @@ func (r *DeploymentRegistry) handleBoshRestart(ctx context.Context, request mcp.
 	}
 	jsonBytes, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(jsonBytes)), nil
+}
+
+// RegisterDeploymentTools registers deployment operation tools.
+func (r *DeploymentRegistry) RegisterDeploymentTools(s *server.MCPServer) {
+	// bosh_delete_deployment
+	s.AddTool(mcp.NewTool("bosh_delete_deployment",
+		mcp.WithDescription("Delete a BOSH deployment"),
+		mcp.WithString("deployment",
+			mcp.Required(),
+			mcp.Description("Name of the deployment to delete")),
+		mcp.WithString("confirm",
+			mcp.Description("Confirmation token (required for destructive operation)")),
+		mcp.WithBoolean("force",
+			mcp.Description("Force delete even if instances are running")),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshDeleteDeployment)
+
+	// bosh_recreate
+	s.AddTool(mcp.NewTool("bosh_recreate",
+		mcp.WithDescription("Recreate VMs for a deployment"),
+		mcp.WithString("deployment",
+			mcp.Required(),
+			mcp.Description("Name of the deployment")),
+		mcp.WithString("job",
+			mcp.Description("Job name to recreate (optional, all if not specified)")),
+		mcp.WithString("index",
+			mcp.Description("Instance index to recreate (optional)")),
+		mcp.WithString("confirm",
+			mcp.Description("Confirmation token (required for destructive operation)")),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshRecreate)
+
+	// bosh_stop
+	s.AddTool(mcp.NewTool("bosh_stop",
+		mcp.WithDescription("Stop jobs in a deployment"),
+		mcp.WithString("deployment",
+			mcp.Required(),
+			mcp.Description("Name of the deployment")),
+		mcp.WithString("job",
+			mcp.Description("Job name to stop (optional, all if not specified)")),
+		mcp.WithString("confirm",
+			mcp.Description("Confirmation token (required for destructive operation)")),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshStop)
+
+	// bosh_start
+	s.AddTool(mcp.NewTool("bosh_start",
+		mcp.WithDescription("Start stopped jobs in a deployment"),
+		mcp.WithString("deployment",
+			mcp.Required(),
+			mcp.Description("Name of the deployment")),
+		mcp.WithString("job",
+			mcp.Description("Job name to start (optional, all if not specified)")),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshStart)
+
+	// bosh_restart
+	s.AddTool(mcp.NewTool("bosh_restart",
+		mcp.WithDescription("Restart jobs in a deployment"),
+		mcp.WithString("deployment",
+			mcp.Required(),
+			mcp.Description("Name of the deployment")),
+		mcp.WithString("job",
+			mcp.Description("Job name to restart (optional, all if not specified)")),
+		mcp.WithString("environment",
+			mcp.Description("Named BOSH environment (optional)")),
+	), r.handleBoshRestart)
 }
